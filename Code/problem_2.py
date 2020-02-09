@@ -1,5 +1,6 @@
 import csv
 import numpy as np
+import matplotlib.pyplot as plt
 
 datadict = {}
 with open('data_1.csv') as csvfile:
@@ -21,4 +22,19 @@ for i in datadict:
 y = np.array(matrix_y)
 x = np.array(matrix_x)
 
+xt = np.transpose(x)
+#print(YT)
+one = np.linalg.inv(np.matmul(xt, x))
+two = np.matmul(xt, y)
 
+B = np.matmul(one, two)
+
+yi = []
+xcoords = []
+for xi in x:
+	yi.append(xi[0]*B[0] + xi[1]*B[1] + xi[2]*B[2])
+	xcoords.append(xi[1])
+
+plt.plot(xcoords, matrix_y, 'bo')
+plt.plot(xcoords, yi, 'ro')
+plt.show()
