@@ -5,7 +5,8 @@ import random
 
 
 THRESHOLD = 25
-N = 400
+N = 4000
+
 
 def check_inlier(a,b,c,xi,yi,t):
    
