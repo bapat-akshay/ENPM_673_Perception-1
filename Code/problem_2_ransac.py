@@ -4,8 +4,8 @@ import matplotlib.pyplot as plt
 import random
 
 
-THRESHOLD = 30
-N = 25730
+THRESHOLD = 25
+N = 400
 
 
 
