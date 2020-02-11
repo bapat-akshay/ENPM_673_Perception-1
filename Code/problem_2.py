@@ -1,9 +1,13 @@
 import csv
+import sys
 import numpy as np
 import matplotlib.pyplot as plt
 
+#reading the file name form the command arguments
+csvFileName = sys.argv[1]+'.csv'
+
 datadict = {}
-with open('data_2.csv') as csvfile:
+with open(csvFileName) as csvfile:
 	data = csv.reader(csvfile, delimiter = ',')
 	for row in data:
 		datadict[row[0]] = row[1]
@@ -23,12 +27,13 @@ y = np.array(matrix_y)
 x = np.array(matrix_x)
 
 xt = np.transpose(x)
-#print(YT)
+
 one = np.linalg.inv(np.matmul(xt, x))
 two = np.matmul(xt, y)
 
 B = np.matmul(one, two)
 
+#plotting the curve based on the generated values form B
 yi = []
 xcoords = []
 for xi in x:
