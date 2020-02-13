@@ -33,25 +33,19 @@ intermediate_matrix = np.matmul(A_transpose,A)
 # print(diagonal_test)
 
 w, v = LA.eig(intermediate_matrix)
-# print(w) #Eigen values
-# print(v) #Eigen vector matrix
+# print(w) #w is the list for Eigen values
+# print(v) #v is the Eigen vector matrix where columns of V correspond to 
+# eigen vectors of (A_transpose*A)
 
 V_eigen_vector_matrix = v
 V_transpose = np.transpose(V_eigen_vector_matrix)
 
 eigen_square_root = []
-# print(w[1])
 
 for i in range(0,len(w)):
 	eigen_square_root.append(math.sqrt(abs(w[i])))
 
-# print(eigen_square_root)
-
 Sigma_eigen_value_matrix = np.diag(eigen_square_root)
-
-# print(Sigma_eigen_value_matrix)
-# print(math.sqrt(4)) 
-
 Sigma_inverse = np.linalg.inv(Sigma_eigen_value_matrix)
 
 U_matrix = np.matmul(A, np.matmul(V_eigen_vector_matrix,Sigma_inverse))
@@ -63,9 +57,20 @@ print(f'V transpose :\n {V_transpose}')
 SVD_check = np.matmul(U_matrix, np.matmul(Sigma_eigen_value_matrix, V_transpose))
 print(f'SVD check matrix:\n {SVD_check}')
 
-# if A==SVD_check:
-# 	print('SVD successful')
+# custom function to round off a matrix to five decimal places
+def matrix_round_off(matrix):
+    for i in range(0,np.size(matrix,0)):
+        for j in range(0,np.size(matrix,1)):
+            matrix[i][j] = round(matrix[i][j],5)
+    return matrix
 
+print(matrix_round_off(SVD_check))			
+
+print('Homography matrix is:- \n')
+last_column_v = V_eigen_vector_matrix[:,8]
+
+homography_matrix = np.reshape(last_column_v, (3,3))
+print(homography_matrix)
 
 
 
