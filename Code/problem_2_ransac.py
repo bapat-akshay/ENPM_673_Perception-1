@@ -37,11 +37,8 @@ def checkRepeatingPoints(pntsList, pointSet):
 csvFileName = sys.argv[1]+'.csv'
 
 datadict = {}
-<<<<<<< HEAD
-with open('data_2.csv') as csvfile:
-=======
+
 with open(csvFileName) as csvfile:
->>>>>>> 284ea142c94bd83be77026890ceda31958eb4cf8
 	data = csv.reader(csvfile, delimiter = ',')
 	for row in data:
 		datadict[row[0]] = row[1]
