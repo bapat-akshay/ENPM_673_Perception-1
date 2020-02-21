@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 datadict = {}
-with open('data_1.csv') as csvfile:
+with open('data_2.csv') as csvfile:
 	data = csv.reader(csvfile, delimiter = ',')
 	for row in data:
 		datadict[row[0]] = row[1]
