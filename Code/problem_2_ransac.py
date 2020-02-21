@@ -2,12 +2,14 @@ import csv
 import numpy as np
 import matplotlib.pyplot as plt
 import random
-
+import sys
 
 THRESHOLD = 25
-N = 4000
+N = 35
 
-
+# To check if point xi yi lies within the given threshold distance t
+# (a,b,c) constants for the equation of parabola
+# (xi, yi) point to be checked 
 def check_inlier(a,b,c,xi,yi,t):
    
     distance = yi -(a*(xi**2)) - (b*xi) - c
@@ -19,6 +21,9 @@ def check_inlier(a,b,c,xi,yi,t):
         return 0
 
 
+# To check if the set of 3 random points have already been used to generate model before
+# pntsList - list of 3 random points
+# pointSet - list of previous pntsList
 def checkRepeatingPoints(pntsList, pointSet):
 	flag = 0
 	for p in pointSet:
@@ -28,8 +33,12 @@ def checkRepeatingPoints(pntsList, pointSet):
 	return flag
 
 
+#reading the file name form the command arguments
+csvFileName = sys.argv[1]+'.csv'
+
 datadict = {}
-with open('data_2.csv') as csvfile:
+
+with open(csvFileName) as csvfile:
 	data = csv.reader(csvfile, delimiter = ',')
 	for row in data:
 		datadict[row[0]] = row[1]
@@ -51,15 +60,11 @@ x = np.array(matrix_x)
 xcoords = []
 ycoords = matrix_y
 for xi in x:
-	# yi.append(xi[0]*B[0] + xi[1]*B[1] + xi[2]*B[2])
 	xcoords.append(xi[1])
 
 nPoints = len(y)
 pointSet = []
 max_inliers = 0
-
-# while max_inliers < 213:
-# This while statement is tailored to work best for this dataset
 
 for _ in range(N):
 
@@ -96,8 +101,7 @@ for _ in range(N):
 		best_model = [curr_inliers, B[0], B[1], B[2]]
 
 
-print(best_model)
-
+#plotting the curve based on the points chosen, for the specific N and threshold
 yi = []
 for xi in matrix_x:
 	yi.append(xi[0]*best_model[1] + xi[1]*best_model[2] + xi[2]*best_model[3])
@@ -105,5 +109,3 @@ for xi in matrix_x:
 plt.plot(xcoords, matrix_y, 'bo')
 plt.plot(xcoords, yi, 'ro')
 plt.show()
-
-#print(pointSet)
