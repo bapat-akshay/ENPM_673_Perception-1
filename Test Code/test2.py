@@ -1,5 +1,4 @@
 import cv2
-from cv2 import features2d
 import numpy as np
 
 cap = cv2.VideoCapture('Tag0.mp4')
