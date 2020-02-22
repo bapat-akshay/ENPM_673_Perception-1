@@ -14,7 +14,55 @@ def getTagBoundaryContour(hierarchy):
 	return indList
 
 
-cap = cv.VideoCapture('../Project_1_AR_tag_detection/Video_dataset/multipleTags.mp4')
+def getCorners(contour):
+	rect = [[], [], [], []]
+	maxSum = [None, 0]
+	minSum = [None, np.inf]
+	minDIff = [None, np.inf]
+	maxDiff = [None, 0]
+	minX = [None, np.inf]
+	maxX = [None, 0]
+	minY = [None, np.inf]
+	maxY = [None, 0]
+	
+	for index in range(len(contour)):
+		currSum = contour[index][0][0]+contour[index][0][1]
+		currDiff = contour[index][0][0]-contour[index][0][1]
+		if currSum > maxSum[1]:
+			maxSum = [index, currSum]
+		if currSum < minSum[1]:
+			minSum = [index, currSum]
+		if currDiff > maxDiff[1]:
+			maxDiff = [index, currDiff]
+		if currDiff < minDIff[1]:
+			minDIff = [index, currDiff]
+		if contour[index][0][0] > maxX[1]:
+			maxX = [index, contour[index][0][0]]
+		if contour[index][0][1] > maxY[1]:
+			maxY = [index, contour[index][0][1]]
+		if contour[index][0][0] < minX[1]:
+			minX = [index, contour[index][0][0]]
+		if contour[index][0][1] < maxY[1]:
+			minY = [index, contour[index][0][1]]
+
+	rect[0] = contour[minSum[0]][0]
+	rect[1] = contour[maxDiff[0]][0]
+	rect[2] = contour[maxSum[0]][0]
+	rect[3] = contour[minDIff[0]][0]
+
+	# Guard condition for when the above method fails. Typically happens when the inclination
+	# of any of the sides is close to +/-45 degrees.
+	if ((rect[0][0]-rect[1][0])**2 + (rect[0][1]-rect[1][1])**2) < 20000:
+		rect[0] = contour[minX[0]][0]
+		rect[1] = contour[minY[0]][0]
+		rect[2] = contour[maxX[0]][0]
+		rect[3] = contour[maxY[0]][0]
+
+	return np.array(rect,np.float32)
+
+
+
+cap = cv.VideoCapture('../Project_1_AR_tag_detection/Video_dataset/Tag0.mp4')
 
 while(cap.isOpened()):
 	ret, frame = cap.read()
@@ -23,16 +71,25 @@ while(cap.isOpened()):
 
 	# Thresholding to improve contour detection
 	ret, thresh = cv.threshold(gray, 200, 255, 0)
-	
+
 	contours, hierarchy = cv.findContours(thresh, cv.RETR_TREE, cv.CHAIN_APPROX_NONE)
 
 	# Draw each contour
 	for index in getTagBoundaryContour(hierarchy):
-		cv.drawContours(frame, contours[index], -1, (0,0,255), 2)
-
-	cv.imshow('dst',frame)
+		# cv.drawContours(frame, contours[index], -1, (0,0,255), 2)
+		corners = getCorners(contours[index])
+		for point in corners:
+			cv.circle(frame,(point[0],point[1]),10,(0,0,255))
+		width = max(np.linalg.norm(corners[0]-corners[1]), np.linalg.norm(corners[2]-corners[3]))
+		height = max(np.linalg.norm(corners[2]-corners[1]), np.linalg.norm(corners[0]-corners[3]))
+		final = np.array([[0,0], [width-1,0],[width-1,height-1],[0,height-1]],np.float32)
+		M = cv.getPerspectiveTransform(corners, final)
+		warped = cv.warpPerspective(frame, M, (width, height))
+		cv.imshow('tag',warped)
+	
+	#cv.imshow('dst',frame)
 
 	# Runs till the end of the video
-	if cv.waitKey(1) & 0xff == 27:
+	if cv.waitKey(100) & 0xff == 27:
 	 	break
 	 	cv.destroyAllWindows()
