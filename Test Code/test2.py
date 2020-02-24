@@ -1,7 +1,7 @@
 import cv2 as cv
 import numpy as np
 
-cap = cv.VideoCapture('../Project_1_AR_tag_detection/Tag0.mp4')
+cap = cv.VideoCapture('../Project_1_AR_tag_detection/Video_dataset/Tag0.mp4')
 
 while(cap.isOpened()):
 	ret, frame = cap.read()
