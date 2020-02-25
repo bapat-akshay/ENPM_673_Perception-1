@@ -1,5 +1,59 @@
-import cv2 as cv
+import cv2
 import numpy as np
+import sys
+
+
+def getProjectionMatrix(Hmatrix, Kmatrix):
+	K_inv = np.linalg.inv(Kmatrix)
+	lam = 2/(np.linalg.norm(np.matmul(K_inv, Hmatrix[:,0])) + np.linalg.norm(np.matmul(K_inv, Hmatrix[:,1])))
+	B_tilda = np.matmul(K_inv, Hmatrix)
+	if (np.linalg.det(B_tilda) < 0):
+		B = -lam*B_tilda
+	else:
+		B = lam*B_tilda
+
+	r1 = lam*B[:,0]
+	r2 = lam*B[:,1]
+	r3 = np.cross(r1, r2)/lam
+	t = np.array([lam*B[:,2]]).T
+	R = np.array([r1,r2,r3]).T
+	R = np.hstack([R, t])
+	projMat = np.matmul(Kmatrix, np.matrix(R))
+	projMat = projMat/projMat[2,3]
+
+	return projMat
+
+
+def drawCube(projMat, height, corners_world, corners_image, image):
+	p0 = np.array([corners_world[0][0], corners_world[0][1], -height, 1])
+	p1 = np.array([corners_world[1][0], corners_world[1][1], -height, 1])
+	p2 = np.array([corners_world[2][0], corners_world[2][1], -height, 1])
+	p3 = np.array([corners_world[3][0], corners_world[3][1], -height, 1])
+
+	p0_proj = np.matmul(projMat, p0.T)
+	p1_proj = np.matmul(projMat, p1.T)
+	p2_proj = np.matmul(projMat, p2.T)
+	p3_proj = np.matmul(projMat, p3.T)
+
+	edgeColor = (0, 0, 200)
+	thickness = int(2)
+
+	cv2.line(image, tuple(corners_image[0]), tuple(corners_image[1]), edgeColor, thickness)
+	cv2.line(image, tuple(corners_image[1]), tuple(corners_image[2]), edgeColor, thickness)
+	cv2.line(image, tuple(corners_image[2]), tuple(corners_image[3]), edgeColor, thickness)
+	cv2.line(image, tuple(corners_image[3]), tuple(corners_image[0]), edgeColor, thickness)
+
+	cv2.line(image, tuple(corners_image[0]), (int(p0_proj[0,0]/p0_proj[0,2]), int(p0_proj[0,1]/p0_proj[0,2])), edgeColor, thickness)
+	cv2.line(image, tuple(corners_image[1]), (int(p1_proj[0,0]/p1_proj[0,2]), int(p1_proj[0,1]/p1_proj[0,2])), edgeColor, thickness)
+	cv2.line(image, tuple(corners_image[2]), (int(p2_proj[0,0]/p2_proj[0,2]), int(p2_proj[0,1]/p2_proj[0,2])), edgeColor, thickness)
+	cv2.line(image, tuple(corners_image[3]), (int(p3_proj[0,0]/p3_proj[0,2]), int(p3_proj[0,1]/p3_proj[0,2])), edgeColor, thickness)
+
+	cv2.line(image, (int(p0_proj[0,0]/p0_proj[0,2]), int(p0_proj[0,1]/p0_proj[0,2])), (int(p1_proj[0,0]/p1_proj[0,2]), int(p1_proj[0,1]/p1_proj[0,2])), edgeColor, thickness)
+	cv2.line(image, (int(p1_proj[0,0]/p1_proj[0,2]), int(p1_proj[0,1]/p1_proj[0,2])), (int(p2_proj[0,0]/p2_proj[0,2]), int(p2_proj[0,1]/p2_proj[0,2])), edgeColor, thickness)
+	cv2.line(image, (int(p2_proj[0,0]/p2_proj[0,2]), int(p2_proj[0,1]/p2_proj[0,2])), (int(p3_proj[0,0]/p3_proj[0,2]), int(p3_proj[0,1]/p3_proj[0,2])), edgeColor, thickness)
+	cv2.line(image, (int(p3_proj[0,0]/p3_proj[0,2]), int(p3_proj[0,1]/p3_proj[0,2])), (int(p0_proj[0,0]/p0_proj[0,2]), int(p0_proj[0,1]/p0_proj[0,2])), edgeColor, thickness)
+
+	return image
 
 
 # Generate a new order of corners according to the detected orientation of the tag
@@ -147,18 +201,31 @@ def getCorners(contour):
 	return np.array(rect,np.float32)
 
 
+#----------------------------------------------------------------------------------------------------------------------------------------------------------
+#-------------------------------------------------------------------MAIN BODY------------------------------------------------------------------------------
+#----------------------------------------------------------------------------------------------------------------------------------------------------------
 
-cap = cv.VideoCapture('../Project_1_AR_tag_detection/Video_dataset/multipleTags.mp4')
+# mode = sys.argv[1]
+# cube = lena = False
 
-lena = cv.imread('../Project_1_AR_tag_detection/reference_images/images/Lena.png')
+# if (mode == 'cube'):
+# 	cube = True
+# elif (mode == 'lena'):
+# 	lena = True
+videoName = 'Tag0'
+
+Kmatrix = np.array([[1406.08415449821,0,0],[2.20679787308599, 1417.99930662800,0],[1014.13643417416, 566.347754321696,1]]).T
+cap = cv2.VideoCapture('../Project_1_AR_tag_detection/Video_dataset/' + videoName + '.mp4')
+
+lena = cv2.imread('../Project_1_AR_tag_detection/reference_images/images/Lena.png')
 (lenaH, lenaW, c) = lena.shape
 lenaCorners = np.array([[0,0], [0,lenaW], [lenaH,lenaW], [lenaH,0]],np.float32)
 
 while(cap.isOpened()):
 	ret, frame = cap.read()
-	gray = cv.cvtColor(frame,cv.COLOR_BGR2GRAY)
-	ret, thresh = cv.threshold(gray, 240, 255, 0) # Thresholding to improve contour detection
-	contours, hierarchy = cv.findContours(thresh, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
+	gray = cv2.cvtColor(frame,cv2.COLOR_BGR2GRAY)
+	ret, thresh = cv2.threshold(gray, 240, 255, 0) # Thresholding to improve contour detection
+	contours, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
 	# Draw each contour
 	for index in getTagBoundaryContour(hierarchy):
@@ -166,22 +233,19 @@ while(cap.isOpened()):
 		width = 100
 		height = 100
 		final = np.array([[0,0], [width-1,0],[width-1,height-1],[0,height-1]],np.float32) # the corners for homographic transformation
-		M = cv.getPerspectiveTransform(corners, final)
-		warped = cv.warpPerspective(frame, M, (width, height))
-		#cv.imshow('tag',warped)
-		infoMat = getTagInfoMat(cv.cvtColor(warped,cv.COLOR_BGR2GRAY))
-		ID = getTagID(infoMat)
-		#x = corners[0][0]
-		#y = corners[0][1]
-		#cv.putText(frame, 'Tag #' + str(ID) + ' orientation: ' + getTagOrientation(infoMat), (x,y), cv.FONT_HERSHEY_SIMPLEX, 1, (0,0,255), 2)
-		#print(infoMat)
+		M = cv2.getPerspectiveTransform(corners, final)
+		warped = cv2.warpPerspective(frame, M, (width, height))
+		#cv2.imshow('tag',warped)
+		infoMat = getTagInfoMat(cv2.cvtColor(warped,cv2.COLOR_BGR2GRAY))
 		newCorners = reorientCorners(corners, getTagOrientation(infoMat))
-		persp = cv.getPerspectiveTransform(newCorners, lenaCorners)
-		newWarped = cv.warpPerspective(lena, persp, (frame.shape[1], frame.shape[0]), dst=frame, flags=cv.WARP_INVERSE_MAP, borderMode=cv.BORDER_TRANSPARENT)
+		persp = cv2.getPerspectiveTransform(lenaCorners, newCorners)
+		#cv2.warpPerspective(lena, persp, (frame.shape[1], frame.shape[0]), dst=frame, flags=cv2.WARP_INVERSE_MAP, borderMode=cv2.BORDER_TRANSPARENT)
+		projMat = getProjectionMatrix(persp, Kmatrix)
+		frame = drawCube(projMat, 500, lenaCorners, newCorners, frame)
 
-	cv.imshow('dst',frame)
+	cv2.imshow('dst',frame)
 
 	# Runs till the end of the video
-	if cv.waitKey(100) & 0xff == 27:
+	if cv2.waitKey(30) & 0xff == 27:
 	 	break
-	 	cv.destroyAllWindows()
+	 	cv2.destroyAllWindows()
