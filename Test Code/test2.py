@@ -55,7 +55,6 @@ def drawCube(projMat, height, corners_world, corners_image, image):
 
 	return image
 
-
 # Generate a new order of corners according to the detected orientation of the tag
 def reorientCorners(corners, orientation):
 	newCorners = np.array([[0,0], [0,0], [0,0], [0,0]],np.float32)
