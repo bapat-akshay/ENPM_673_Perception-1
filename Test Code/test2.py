@@ -3,6 +3,59 @@ import numpy as np
 import sys
 
 
+
+
+def customWarp(inp, output, H, lims):
+	H_inv = np.linalg.inv(H)
+	H_inv = H_inv/H_inv[2][2]
+
+
+	for i in range(lims[0]):
+		for j in range(lims[1]):
+			temp = np.array([i, j, 1]).T
+			warp = np.matmul(H_inv, temp)
+			warp = (warp/warp[2]).astype(int)
+
+			if (warp[0] < output.shape[0]) and (warp[1] < output.shape[1]) and (warp[0] > -1) and (warp[1] > -1):
+				inp[j][i] = output[warp[1]][warp[1]]	
+
+	return output
+
+
+
+def findHMatrix(pts1,pts2):
+        A = np.zeros((8,9))
+
+        for i in range(4):
+        	A[2*i][0] = pts2[i-1][0]
+        	A[2*i][1] = pts2[i-1][1]
+        	A[2*i][2] = 1
+        	A[2*i][6] = -pts1[i-1][0]*pts2[i-1][0]
+        	A[2*i][7] = -pts1[i-1][0]*pts2[i-1][1]
+        	A[2*i][8] = -pts1[i-1][0]
+        	A[2*i+1][3] = pts2[i-1][0]
+        	A[2*i+1][4] = pts2[i-1][1]
+        	A[2*i+1][5] = 1
+        	A[2*i+1][6] = -pts1[i-1][1]*pts2[i-1][0]
+        	A[2*i+1][7] = -pts1[i-1][1]*pts2[i-1][1]
+        	A[2*i+1][8] = -pts1[i-1][1]
+
+        u, s, V = np.linalg.svd(A, full_matrices = True)
+
+        a = []
+        if V[8][8] == 1:
+            for i in range(0,9):
+                a.append(V[8][i])
+        else:
+            for i in range(0,9):
+                a.append(V[8][i]/V[8][8])
+
+        # H matrix in 3X3 shape
+        b = np.reshape(a, (3, 3))
+        return b 
+
+
+# Returns projection matrix using intrinsic parameters and homography matrix
 def getProjectionMatrix(Hmatrix, Kmatrix):
 	K_inv = np.linalg.inv(Kmatrix)
 	lam = 2/(np.linalg.norm(np.matmul(K_inv, Hmatrix[:,0])) + np.linalg.norm(np.matmul(K_inv, Hmatrix[:,1])))
@@ -24,12 +77,16 @@ def getProjectionMatrix(Hmatrix, Kmatrix):
 	return projMat
 
 
+# Draws a cube of given height on top of the tag
 def drawCube(projMat, height, corners_world, corners_image, image):
+
+	# Upper corners of the cube in world coordinates
 	p0 = np.array([corners_world[0][0], corners_world[0][1], -height, 1])
 	p1 = np.array([corners_world[1][0], corners_world[1][1], -height, 1])
 	p2 = np.array([corners_world[2][0], corners_world[2][1], -height, 1])
 	p3 = np.array([corners_world[3][0], corners_world[3][1], -height, 1])
 
+	# Upper corners of the cube in image coordinates
 	p0_proj = np.matmul(projMat, p0.T)
 	p1_proj = np.matmul(projMat, p1.T)
 	p2_proj = np.matmul(projMat, p2.T)
@@ -38,6 +95,7 @@ def drawCube(projMat, height, corners_world, corners_image, image):
 	edgeColor = (0, 0, 200)
 	thickness = int(2)
 
+	# Join all vertices of the cube
 	cv2.line(image, tuple(corners_image[0]), tuple(corners_image[1]), edgeColor, thickness)
 	cv2.line(image, tuple(corners_image[1]), tuple(corners_image[2]), edgeColor, thickness)
 	cv2.line(image, tuple(corners_image[2]), tuple(corners_image[3]), edgeColor, thickness)
@@ -54,6 +112,7 @@ def drawCube(projMat, height, corners_world, corners_image, image):
 	cv2.line(image, (int(p3_proj[0,0]/p3_proj[0,2]), int(p3_proj[0,1]/p3_proj[0,2])), (int(p0_proj[0,0]/p0_proj[0,2]), int(p0_proj[0,1]/p0_proj[0,2])), edgeColor, thickness)
 
 	return image
+
 
 # Generate a new order of corners according to the detected orientation of the tag
 def reorientCorners(corners, orientation):
@@ -204,16 +263,28 @@ def getCorners(contour):
 #-------------------------------------------------------------------MAIN BODY------------------------------------------------------------------------------
 #----------------------------------------------------------------------------------------------------------------------------------------------------------
 
-# mode = sys.argv[1]
-# cube = lena = False
+cube = picture = False
 
-# if (mode == 'cube'):
-# 	cube = True
-# elif (mode == 'lena'):
-# 	lena = True
-videoName = 'Tag0'
+if len(sys.argv) == 1:
+	cube = True
+	videoName = 'Tag0'
 
-Kmatrix = np.array([[1406.08415449821,0,0],[2.20679787308599, 1417.99930662800,0],[1014.13643417416, 566.347754321696,1]]).T
+else:
+	mode = sys.argv[1]
+
+	if (mode == 'cube'):
+		cube = True
+		videoName = sys.argv[2]
+	elif (mode == 'lena'):
+		picture = True
+		videoName = sys.argv[2]
+	else:
+		print("Expected two arguments:\n(1) Mode of operation (lena or cube)\n(2) Video Name (e.g. Tag0, or multipleTags)")
+		exit(0)
+
+if cube:
+	Kmatrix = np.array([[1406.08415449821,0,0],[2.20679787308599, 1417.99930662800,0],[1014.13643417416, 566.347754321696,1]]).T
+
 cap = cv2.VideoCapture('../Project_1_AR_tag_detection/Video_dataset/' + videoName + '.mp4')
 
 lena = cv2.imread('../Project_1_AR_tag_detection/reference_images/images/Lena.png')
@@ -226,25 +297,34 @@ while(cap.isOpened()):
 	ret, thresh = cv2.threshold(gray, 240, 255, 0) # Thresholding to improve contour detection
 	contours, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
-	# Draw each contour
+	# For each tag boundary contour detected
 	for index in getTagBoundaryContour(hierarchy):
-		corners = getCorners(contours[index])
+		corners = getCorners(contours[index])	# Tag corners
 		width = 100
 		height = 100
 		final = np.array([[0,0], [width-1,0],[width-1,height-1],[0,height-1]],np.float32) # the corners for homographic transformation
-		M = cv2.getPerspectiveTransform(corners, final)
-		warped = cv2.warpPerspective(frame, M, (width, height))
-		#cv2.imshow('tag',warped)
-		infoMat = getTagInfoMat(cv2.cvtColor(warped,cv2.COLOR_BGR2GRAY))
-		newCorners = reorientCorners(corners, getTagOrientation(infoMat))
-		persp = cv2.getPerspectiveTransform(lenaCorners, newCorners)
-		#cv2.warpPerspective(lena, persp, (frame.shape[1], frame.shape[0]), dst=frame, flags=cv2.WARP_INVERSE_MAP, borderMode=cv2.BORDER_TRANSPARENT)
-		projMat = getProjectionMatrix(persp, Kmatrix)
-		frame = drawCube(projMat, 500, lenaCorners, newCorners, frame)
+		Homography = findHMatrix(corners, final)
+		warped = cv2.warpPerspective(frame, Homography, (width, height))
+		#warped = customWarp(frame, Homography, (width, height))
+
+		infoMat = getTagInfoMat(cv2.cvtColor(warped,cv2.COLOR_BGR2GRAY))	# Get encoded tag data
+		newCorners = reorientCorners(corners, getTagOrientation(infoMat))	# Re-orient corners based on detected tag orientation
+
+		if picture:
+			persp = findHMatrix(lenaCorners, newCorners)
+			cv2.warpPerspective(lena, persp, (frame.shape[1], frame.shape[0]), dst=frame, flags=cv2.WARP_INVERSE_MAP, borderMode=cv2.BORDER_TRANSPARENT)
+			#customWarp(lena, frame, persp, (frame.shape[1], frame.shape[0]))
+			
+		
+		if cube:
+			persp = findHMatrix(lenaCorners, newCorners)
+			#persp = cv2.getPerspectiveTransform(lenaCorners, newCorners)
+			projMat = getProjectionMatrix(persp, Kmatrix)
+			frame = drawCube(projMat, 500, lenaCorners, newCorners, frame)
 
 	cv2.imshow('dst',frame)
 
 	# Runs till the end of the video
-	if cv2.waitKey(30) & 0xff == 27:
+	if cv2.waitKey(30) & 0xff == 27:	
 	 	break
 	 	cv2.destroyAllWindows()
