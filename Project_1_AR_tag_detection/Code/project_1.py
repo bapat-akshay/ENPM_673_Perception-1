@@ -3,21 +3,18 @@ import numpy as np
 import sys
 
 
-
-
 def customWarp(inp, output, H, lims):
 	H_inv = np.linalg.inv(H)
 	H_inv = H_inv/H_inv[2][2]
 
-
-	for i in range(lims[0]):
-		for j in range(lims[1]):
+	for i in range(lims[0][0], lims[0][1]):
+		for j in range(lims[1][0], lims[1][1]):
 			temp = np.array([i, j, 1]).T
 			warp = np.matmul(H_inv, temp)
 			warp = (warp/warp[2]).astype(int)
 
-			if (warp[0] < output.shape[0]) and (warp[1] < output.shape[1]) and (warp[0] > -1) and (warp[1] > -1):
-				inp[j][i] = output[warp[1]][warp[1]]	
+			if (warp[0] < inp.shape[0]) and (warp[1] < inp.shape[1]) and (warp[0] > -1) and (warp[1] > -1):
+				output[j][i] = inp[warp[1]][warp[0]]	
 
 	return output
 
@@ -250,11 +247,11 @@ def getCorners(contour):
 
 	# Guard condition for when the above method fails. Typically happens when the inclination
 	# of any of the sides is close to +/-45 degrees.
-	if (abs((rect[0][0] - rect[2][0])) < 50):
-		rect[0] = contour[minX[0]][0]
-		rect[1] = contour[minY[0]][0]
-		rect[2] = contour[maxX[0]][0]
-		rect[3] = contour[maxY[0]][0]
+	# if (abs((rect[0][1] - rect[0][1])) < 50):
+	# 	rect[0] = contour[minX[0]][0]
+	# 	rect[1] = contour[minY[0]][0]
+	# 	rect[2] = contour[maxX[0]][0]
+	# 	rect[3] = contour[maxY[0]][0]
 
 	try:
 		return np.array(rect,np.float32)
@@ -298,6 +295,7 @@ while(cap.isOpened()):
 	gray = cv2.cvtColor(frame,cv2.COLOR_BGR2GRAY)
 	ret, thresh = cv2.threshold(gray, 240, 255, 0) # Thresholding to improve contour detection
 	contours, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+	masked = cv2.bitwise_and(frame, frame, mask = cv2.inRange(frame, 180, 255))
 
 	# For each tag boundary contour detected
 	for index in getTagBoundaryContour(hierarchy):
@@ -307,21 +305,21 @@ while(cap.isOpened()):
 		height = 100
 		final = np.array([[0,0], [width-1,0],[width-1,height-1],[0,height-1]],np.float32) # the corners for homographic transformation
 		Homography = findHMatrix(corners, final)
-		warped = cv2.warpPerspective(frame, Homography, (width, height))
-		#warped = customWarp(frame, Homography, (width, height))
+		warped = customWarp(masked, np.zeros((width, height)), Homography, [[0, width], [0, height]])
+		warped = warped[0:width][0:height]
 
-		infoMat = getTagInfoMat(cv2.cvtColor(warped,cv2.COLOR_BGR2GRAY))	# Get encoded tag data
+		infoMat = getTagInfoMat(warped)		# Get encoded tag data
 		newCorners = reorientCorners(corners, getTagOrientation(infoMat))	# Re-orient corners based on detected tag orientation
+		cv2.putText(frame, 'Tag' + str(getTagID(infoMat)), (int(corners[0][0]-10), int(corners[0][1]-10)), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,200), 2, cv2.LINE_AA)
 
 		if picture:
-			persp = findHMatrix(lenaCorners, newCorners)
-			cv2.warpPerspective(lena, persp, (frame.shape[1], frame.shape[0]), dst=frame, flags=cv2.WARP_INVERSE_MAP, borderMode=cv2.BORDER_TRANSPARENT)
-			#customWarp(lena, frame, persp, (frame.shape[1], frame.shape[0]))
+			lims = np.array([[min(corners[:,0]), max(corners[:,0])], [min(corners[:,1]), max(corners[:,1])]]).astype(int)
+			persp = findHMatrix(newCorners, lenaCorners)
+			frame = customWarp(lena, frame, persp, lims)
 			
 		
 		if cube:
 			persp = findHMatrix(newCorners, lenaCorners)
-			#persp = cv2.getPerspectiveTransform(lenaCorners, newCorners)
 			projMat = getProjectionMatrix(persp, Kmatrix)
 			frame = drawCube(projMat, 500, lenaCorners, newCorners, frame)
 
