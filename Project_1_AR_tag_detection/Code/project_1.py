@@ -287,9 +287,9 @@ else:
 if cube:
 	Kmatrix = np.array([[1406.08415449821,0,0],[2.20679787308599, 1417.99930662800,0],[1014.13643417416, 566.347754321696,1]]).T
 
-cap = cv2.VideoCapture('../Project_1_AR_tag_detection/Video_dataset/' + videoName + '.mp4')
+cap = cv2.VideoCapture('../Video_dataset/' + videoName + '.mp4')
 
-lena = cv2.imread('../Project_1_AR_tag_detection/reference_images/images/Lena.png')
+lena = cv2.imread('../reference_images/images/Lena.png')
 (lenaH, lenaW, c) = lena.shape
 lenaCorners = np.array([[0,0], [0,lenaW], [lenaH,lenaW], [lenaH,0]],np.float32)
 
