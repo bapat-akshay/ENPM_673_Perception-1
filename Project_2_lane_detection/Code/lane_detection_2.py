@@ -114,19 +114,21 @@ cap = cv2.VideoCapture("../../Media/data_2/challenge_video.mp4")
 	#frame = cv2.imread('../../../data_1/data/0000000200.png')
 while cap.isOpened():
 	ret, frame = cap.read()
+	if not ret:
+		cv2.destroyAllWindows()
+		break
+		
 #------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 # PART 1: GET REQUIRED POINTS AND HOMOGRAPHY MATRIX FROM THE FIRST FRAME OF THE VIDEO
 
 
-	try:
-		frame = cv2.undistort(frame, K_matrix, distCoeffs)
-	except:
-		pass
+	frame = cv2.undistort(frame, K_matrix, distCoeffs)
 	if firstFrame:
 
 		corners = np.array([[590,470],[754,470],[1120,690],[280,690]],np.float32)
 		# for c in corners:
 		# 	frame = cv2.circle(frame, tuple(c), 1, (0,0,255), 2)
+		dims = (frame.shape[1], frame.shape[0])
 		width = corners[1][0] - corners[0][0]
 		height = np.sqrt((corners[3][1]-corners[0][1])**2 + (corners[3][0]-corners[0][0])**2)
 		destCorners = np.array([[0,0],[width,0],[width,height],[0,height]],np.float32) #np.array([corners[0], [corners[0][0]+width,corners[0][1]], [corners[0][0]+width,corners[0][1]+height], [corners[0][0],corners[0][1]+height]], np.float32)
@@ -195,13 +197,12 @@ while cap.isOpened():
 #------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 # PART 4: WRITE THE VIDEO FILE
 
-	#cv2.imshow('warped', frame)
-	#cv2.imshow('original', frame)
-	if cv2.waitKey(0) & 0xff == 27:	
+	cv2.imshow('Data 2', frame)
+	if cv2.waitKey(10) & 0xff == 27:	
 	 	break
 	 	cv2.destroyAllWindows()
 
-output = cv2.VideoWriter('video_2.mp4', cv2.VideoWriter_fourcc('m','p','4','v'), 15, (frame.shape[1], frame.shape[0]))
+output = cv2.VideoWriter('video_2.mp4', cv2.VideoWriter_fourcc('m','p','4','v'), 15, dims)
 for i in range(len(imgArray)):
 	output.write(imgArray[i])
 output.release()
