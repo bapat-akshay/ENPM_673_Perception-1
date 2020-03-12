@@ -3,7 +3,6 @@ import numpy as np
 import glob
 import matplotlib.pyplot as plt
 import warnings
-from sklearn.linear_model import RANSACRegressor
 
 
 # This function analyzes the histogram of the warped road image and returns likely locations of 
@@ -102,12 +101,15 @@ def fitPolynomial(img, dataset):
 			if y > 280 and y < frame.shape[0]:
 				points.append((int(xi), int(y)))
 
-	return points
+	diff = abs(points[0][0] - points[-1][0])
+
+	return points, diff
 
 
 #------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 #-------------------------------------------------------------------MAIN BODY--------------------------------------------------------------------------------------------------------------
 #------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
 firstFrame = True
 K_matrix = np.array([[9.037596e+02, 0.000000e+00, 6.957519e+02], [0.000000e+00, 9.019653e+02, 2.242509e+02], [0.000000e+00, 0.000000e+00, 1.000000e+00]], np.float32)
 distCoeffs = np.array([-3.639558e-01, 1.788651e-01, 6.029694e-04, -3.922424e-04, -5.382460e-02], np.float32)
@@ -115,7 +117,6 @@ distCoeffs = np.array([-3.639558e-01, 1.788651e-01, 6.029694e-04, -3.922424e-04,
 
 imgArray = []
 for file in sorted(glob.glob("../../Media/data_1/data/*.png")):
-	#frame = cv2.imread('../../../data_1/data/0000000200.png')
 	frame = cv2.imread(file)
 
 #------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -176,22 +177,30 @@ for file in sorted(glob.glob("../../Media/data_1/data/*.png")):
 	newPointsX = np.array(newPointsX)
 	newPointsY = np.array(newPointsY)
 	points = []
+	diff = [None, None]
 	for i in range(2):
-		for p in fitPolynomial(frame, allPoints[i]):
+		polyPoints, diff[i] = fitPolynomial(frame, allPoints[i])
+		for p in polyPoints:
 			points.append(p)
 
+	if abs(diff[0]-diff[1]) < 10:
+		turn = ''
+	elif diff[0] < diff[1]:
+		turn = 'Left Turn'
+	else:
+		turn = 'Right Turn'
+
 	overlayFrame = frame.copy()
+	cv2.putText(frame, turn, (500,40), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,255), 2, cv2.LINE_AA)
 	cv2.fillPoly(overlayFrame, np.array([points],np.int32), (0,255,0,0.3))
 	frame = cv2.addWeighted(overlayFrame, 0.4, frame, 0.6, 0)
 
 #------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 # PART 4: WRITE THE VIDEO FILE
 
-
-	#cv2.imshow('warped', frame)
-	#cv2.imshow('original', warped)
+	cv2.imshow('Data 1', frame)
 	imgArray.append(frame)
-	if cv2.waitKey(0) & 0xff == 27:	
+	if cv2.waitKey(10) & 0xff == 27:	
 	 	break
 	 	cv2.destroyAllWindows()
 

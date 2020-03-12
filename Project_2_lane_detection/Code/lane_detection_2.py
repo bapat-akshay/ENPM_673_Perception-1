@@ -3,6 +3,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 import warnings
 
+
+# This function analyzes the histogram of the warped road image and returns likely locations of 
+# lane candidates in terms of lower and upper bounds of their x coordinates.
 def getLanesFromHist(hist):
 	l = list(hist[0].copy())
 	max1 = max(l)
@@ -20,6 +23,7 @@ def getLanesFromHist(hist):
 	return [[lower1, upper1], [lower2, upper2]]
 
 
+# This function runs a sliding window search on the likely lane candidates to get all points in that lane.
 def getLanePoints(warped, lower, upper):
 	width = upper - lower
 	height = 70
@@ -49,6 +53,7 @@ def getLanePoints(warped, lower, upper):
 	return points
 
 
+# A function to draw the histogram to get lane candidates
 def drawHistogram(thresh, nbins, height):
 	count = []
 	for x in range(thresh.shape[1]):
@@ -63,6 +68,8 @@ def drawHistogram(thresh, nbins, height):
 	return ret	
 
 
+# A function that takes a set of points belonging to a lane and returns evenly spaced points that lie on
+# the curve fitted to that set of points.
 def fitPolynomial(img, dataset):
 	matrix_y = []
 	matrix_x = []
@@ -75,18 +82,12 @@ def fitPolynomial(img, dataset):
 
 	with warnings.catch_warnings():
 		warnings.filterwarnings('error')
-		try:
-			coeffs = np.polyfit(matrix_x, matrix_y, 1)
+		try:												# Default fit is a line. If polyfit() throws a warning message due to a bad fit, we change to a second order polynomial.
+			coeffs = np.polyfit(matrix_x, matrix_y, 1)		# The default is set to a line because a second order polynomial has a worse fit as comparison to the line
 		except:
 			coeffs = np.polyfit(matrix_x, matrix_y, 2)
-	# xt = np.transpose(x)
-	# B = np.matmul(np.linalg.inv(np.matmul(xt, x)), np.matmul(xt, y))
-
 	points = []
-	# for xi in x:
-	# 	points.append((int(xi[1]), int(xi[0]*B[0] + xi[1]*B[1] + xi[2]*B[2])))
 
-	#print(points)
 	x = range(0, img.shape[1]-1, 10)
 	if len(coeffs) == 3:
 		for xi in x:
@@ -99,7 +100,9 @@ def fitPolynomial(img, dataset):
 			if y > 470 and y < frame.shape[0]:
 				points.append((int(xi), int(y)))
 
-	return points
+	diff = abs(points[0][0] - points[-1][0])
+
+	return points, diff
 
 
 #------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -111,7 +114,6 @@ distCoeffs = np.array([-2.42565104e-01,-4.77893070e-02,-1.31388084e-03,-8.791077
 
 imgArray = []
 cap = cv2.VideoCapture("../../Media/data_2/challenge_video.mp4")
-	#frame = cv2.imread('../../../data_1/data/0000000200.png')
 while cap.isOpened():
 	ret, frame = cap.read()
 	if not ret:
@@ -141,9 +143,7 @@ while cap.isOpened():
 # PART 2: FILTER AND TRANSFORM THE FRAME
 
 
-	#filtered = cv2.fastNlMeansDenoisingColored(frame, None, 10, 10, 7, 21) 
 	filtered = cv2.GaussianBlur(frame,(9,9),0)
-	#filtered = cv2.bilateralFilter(frame,13,75,75)
 	hsvFrame = cv2.cvtColor(filtered, cv2.COLOR_BGR2HLS)
 	bwFrame = cv2.cvtColor(filtered, cv2.COLOR_BGR2GRAY)
 	y_lower = np.array([15,0,60])
@@ -185,12 +185,21 @@ while cap.isOpened():
 	newPointsX = np.array(newPointsX)
 	newPointsY = np.array(newPointsY)
 	points = []
+	diff = [None, None]
 	for i in range(2):
-		for p in fitPolynomial(frame, allPoints[i]):
+		polyPoints, diff[i] = fitPolynomial(frame, allPoints[i])
+		for p in polyPoints:
 			points.append(p)
 
+	if abs(diff[0]-diff[1]) < 100:
+		turn = ''
+	elif diff[0] < diff[1]:
+		turn = 'Right Turn'
+	else:
+		turn = 'Left Turn'
 	overlayFrame = frame.copy()
-	cv2.fillPoly(overlayFrame, np.array([points],np.int32), (0,255,0,0.3))
+	cv2.putText(frame, turn, (500,40), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,255), 2, cv2.LINE_AA)
+	cv2.fillPoly(overlayFrame, np.array([points],np.int32), (0,255,0))
 	frame = cv2.addWeighted(overlayFrame, 0.4, frame, 0.6, 0)
 	imgArray.append(frame)
 
