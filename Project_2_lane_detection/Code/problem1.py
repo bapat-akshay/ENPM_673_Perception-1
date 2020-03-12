@@ -11,6 +11,7 @@ night_ride = cv2.VideoWriter('night_ride.mp4',cv2.VideoWriter_fourcc('m','p','4'
 
 #to check if cap has some value
 # print(cap.isOpened())
+imgArray = []
 while(cap.isOpened()):
     ret, frame = cap.read()
     #frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -35,64 +36,21 @@ while(cap.isOpened()):
 
         cv2.imshow('frame_new', frame_clahe)
         cv2.imshow('frame_old', frame)
+        imgArray.append(frame_clahe)
 
 
         #to quit video
-        if cv2.waitKey(1) & 0xff == ord('q'):
+        if cv2.waitKey(30) & 0xff == ord('q'):
             break
 
 
     else:
         break
+for i in range(len(imgArray)):
+    night_ride.write(imgArray[i])
 
 cap.release()
 night_ride.release()
 cv2.destroyAllWindows()
 # Runs till the end of the video
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-# currentFrame = 0
-# while(True):
-#     # Capture frame-by-frame
-#     ret, frame = cap.read()
-#
-#     hist, bins = np.histogram(frame.flatten(), 256, [0, 256])
-#     cdf = hist.cumsum()
-#     cdf_normalized = cdf * float(hist.max()) / cdf.max()
-#     plt.plot(cdf_normalized, color='b')
-#     plt.hist(frame.flatten(), 256, [0, 256], color='r')
-#     plt.xlim([0, 256])
-#     plt.legend(('cdf', 'histogram'), loc='upper left')
-#     plt.show()
-#
-#     cdf_m = np.ma.masked_equal(cdf, 0)
-#     cdf_m = (cdf_m - cdf_m.min()) * 255 / (cdf_m.max() - cdf_m.min())
-#     cdf = np.ma.filled(cdf_m, 0).astype('uint8')
-#
-#     frame2 = cdf[frame]
-#
-#     # # Saves image of the current frame in jpg file
-#     name = './data/frame' + str(currentFrame) + '.jpg'
-#     print ('Creating...' + name)
-#     cv2.imwrite(name, frame2)
-#
-#
-#
-#     # To stop duplicate images
-#     currentFrame += 1
-#
-# # When everything done, release the capture
-# cap.release()
-# cv2.destroyAllWindows()
